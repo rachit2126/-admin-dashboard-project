@@ -1,0 +1,313 @@
+ <!doctype html>
+<html>
+<head>
+<title>Dashboard</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI;}
+body{display:flex;background:#f1f5f9;height:100vh;}
+
+.sidebar{
+  width:240px;
+  background:#0f172a;
+  color:white;
+  padding:20px;
+}
+
+.nav-btn{
+  width:100%;
+  padding:12px;
+  margin:10px 0;
+  background:#1e293b;
+  border:none;
+  color:#e2e8f0;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.nav-btn:hover{background:#2563eb;}
+
+.main{
+  flex:1;
+  padding:30px;
+  overflow:auto;
+}
+
+.section{display:none;}
+.section.active{display:block;}
+
+button{
+  padding:8px 14px;
+  color:white;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  margin:3px;
+}
+
+.delete{background:red;}
+
+table{
+  width:100%;
+  margin-top:20px;
+  border-collapse:collapse;
+  background:white;
+}
+
+th,td{
+  padding:10px;
+  border-bottom:1px solid #ddd;
+}
+
+th{
+  background:#0f172a;
+  color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>Navigation</h2>
+  <button class="nav-btn" onclick="showSection('dashboard')">Dashboard</button>
+  <button class="nav-btn" onclick="showSection('users')">Users</button>
+  <button class="nav-btn" onclick="showSection('products')">Products</button>
+</div>
+
+<div class="main">
+
+<div id="dashboard" class="section active">
+  <h1>Dashboard</h1>
+  <h2 id="totalUsers"></h2>
+</div>
+
+<div id="users" class="section">
+  <h1>Users</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Password</th>
+        <th>Age</th>
+        <th>Mobile</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+</div>
+
+<div id="products" class="section">
+  <h1>Products</h1>
+
+  <button id="addBtn" style="background:#2563eb;">Add Product</button>
+
+  <div id="formBox" style="display:none;">
+    <form id="productForm">
+      <input type="hidden" id="editId">
+      <input type="text" id="pname" placeholder="Product Name" required>
+      <input type="number" id="pprice" placeholder="Price" required>
+      <input type="text" id="pimg" placeholder="Image URL" required>
+      <button type="submit" style="background:#2563eb;">Save</button>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Image</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="productTable"></tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+
+const BASE_URL = "http://localhost:3000";
+const API_USERS = BASE_URL + "/users";
+const API_PRODUCTS = BASE_URL + "/products";
+
+const userTable = document.getElementById("userTable");
+const productTable = document.getElementById("productTable");
+const totalUsers = document.getElementById("totalUsers");
+
+const addBtn = document.getElementById("addBtn");
+const formBox = document.getElementById("formBox");
+const productForm = document.getElementById("productForm");
+
+ 
+function showSection(id){
+  document.querySelectorAll(".section")
+    .forEach(sec => sec.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+ 
+async function loadUsers(){
+  const res = await fetch(API_USERS);
+  const users = await res.json();
+
+  userTable.innerHTML = "";
+  totalUsers.innerText = "Total Users: " + users.length;
+
+  users.forEach(user=>{
+
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${user.id}</td>
+      <td>${user.username}</td>
+      <td>${user.pass}</td>
+      <td>${user.age}</td>
+      <td>${user.number}</td>
+      <td>
+        <button class="viewBtn" style="background:#2563eb;">View</button>
+        <button class="statusBtn"></button>
+        <button class="delete deleteBtn">Delete</button>
+      </td>
+    `;
+
+   
+    row.querySelector(".viewBtn").addEventListener("click", function(){
+      alert(
+        "User Details:\n\n" +
+        "ID: " + user.id + "\n" +
+        "Username: " + user.username + "\n" +
+        "Age: " + user.age + "\n" +
+        "Mobile: " + user.number + "\n" +
+        "Status: " + (user.status || "active")
+      );
+    });
+
+ 
+    const statusBtn = row.querySelector(".statusBtn");
+
+    function updateButton(status){
+      if(status === "inactive"){
+        statusBtn.innerText = "Inactive";
+        statusBtn.style.background = "red";
+      } else {
+        statusBtn.innerText = "Active";
+        statusBtn.style.background = "green";
+      }
+    }
+
+    const currentStatus = user.status || "active";
+    updateButton(currentStatus);
+
+    statusBtn.addEventListener("click", async function(){
+
+      const newStatus = (user.status === "inactive") ? "active" : "inactive";
+
+      await fetch(API_USERS + "/" + user.id, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      user.status = newStatus;
+      updateButton(newStatus);
+    });
+
+ 
+    row.querySelector(".deleteBtn").addEventListener("click", async function(){
+      if(confirm("Delete this user permanently?")){
+        await fetch(API_USERS + "/" + user.id, { method: "DELETE" });
+        loadUsers();
+      }
+    });
+
+    userTable.appendChild(row);
+  });
+}
+
+ 
+async function loadProducts(){
+  const res = await fetch(API_PRODUCTS);
+  const products = await res.json();
+
+  productTable.innerHTML = "";
+
+  products.forEach(product=>{
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${product.name}</td>
+      <td>₹${product.price}</td>
+      <td><img src="${product.img}" width="40"></td>
+      <td>
+        <button class="editBtn" style="background:#2563eb;">Edit</button>
+        <button class="delete deleteBtn">Delete</button>
+      </td>
+    `;
+
+    row.querySelector(".editBtn").addEventListener("click", function(){
+      formBox.style.display = "block";
+      document.getElementById("editId").value = product.id;
+      document.getElementById("pname").value = product.name;
+      document.getElementById("pprice").value = product.price;
+      document.getElementById("pimg").value = product.img;
+    });
+
+    row.querySelector(".deleteBtn").addEventListener("click", async function(){
+      if(confirm("Delete this product?")){
+        await fetch(API_PRODUCTS + "/" + product.id, { method: "DELETE" });
+        loadProducts();
+      }
+    });
+
+    productTable.appendChild(row);
+  });
+}
+
+ 
+addBtn.addEventListener("click", function(){
+  formBox.style.display = "block";
+  productForm.reset();
+  document.getElementById("editId").value = "";
+});
+
+ 
+productForm.addEventListener("submit", async function(e){
+  e.preventDefault();
+
+  const id = document.getElementById("editId").value;
+  const name = document.getElementById("pname").value;
+  const price = document.getElementById("pprice").value;
+  const img = document.getElementById("pimg").value;
+
+  if(id === ""){
+    await fetch(API_PRODUCTS,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ name, price, img })
+    });
+  } else {
+    await fetch(API_PRODUCTS + "/" + id,{
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ id, name, price, img })
+    });
+  }
+
+  formBox.style.display = "none";
+  productForm.reset();
+  loadProducts();
+});
+
+ 
+loadUsers();
+loadProducts();
+
+</script>
+
+</body>
+</html>

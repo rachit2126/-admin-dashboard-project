@@ -1,0 +1,189 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<title>Login / Signup</title>
+
+<style>
+body{
+    font-family:Arial;
+    background:#0e0e11;
+    color:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.card{
+    background:#1a1a1f;
+    padding:30px;
+    width:320px;
+    border-radius:8px;
+}
+
+input{
+    width:100%;
+    padding:8px;
+    margin:8px 0;
+}
+
+button{
+    width:100%;
+    padding:8px;
+    margin-top:10px;
+    background:#c8a951;
+    border:none;
+    cursor:pointer;
+}
+
+.hidden{
+    display:none;
+}
+
+.error{
+    color:red;
+    font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+ 
+<div id="loginBox">
+<h2>Login</h2>
+<div class="error" id="loginError"></div>
+
+<input type="text" id="loginUsername" placeholder="Username">
+<input type="password" id="loginPass" placeholder="Password">
+
+<button onclick="login()">Login</button>
+<button onclick="showSignup()">Create Account</button>
+</div>
+
+ 
+<div id="signupBox" class="hidden">
+<h2>Signup</h2>
+<div class="error" id="signupError"></div>
+
+<input type="text" id="username" placeholder="Username">
+<input type="password" id="pass" placeholder="Password">
+<input type="number" id="age" placeholder="Age">
+<input type="text" id="number" placeholder="Mobile Number">
+
+<button onclick="signup()">Create Account</button>
+<button onclick="showLogin()">Back to Login</button>
+</div>
+
+</div>
+
+<script>
+
+const USER_API = "http://localhost:3000/users";
+
+
+function showSignup(){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("signupBox").classList.remove("hidden");
+}
+
+function showLogin(){
+    document.getElementById("signupBox").classList.add("hidden");
+    document.getElementById("loginBox").classList.remove("hidden");
+}
+
+ 
+
+async function signup(){
+
+    const username = document.getElementById("username").value.trim();
+    const pass = document.getElementById("pass").value.trim();
+    const age = document.getElementById("age").value.trim();
+    const number = document.getElementById("number").value.trim();
+    const error = document.getElementById("signupError");
+
+    error.innerHTML="";
+
+    if(username=="" || pass=="" || age=="" || number==""){
+        error.innerHTML="All fields required!";
+        return;
+    }
+
+    if(pass.length < 4){
+        error.innerHTML="Password must be 4+ characters!";
+        return;
+    }
+
+    const res = await fetch(USER_API);
+    const users = await res.json();
+
+    const existing = users.find(u => u.username === username);
+
+    if(existing){
+        error.innerHTML="Username already exists!";
+        return;
+    }
+
+    const newUser = {
+        username:username,
+        pass:pass,
+        age:age,
+        number:number,
+        role:"user",
+        status:"active"    
+    };
+
+    await fetch(USER_API,{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(newUser)
+    });
+
+    alert("Account Created Successfully!");
+    showLogin();
+}
+
+ 
+
+async function login(){
+
+    const username = document.getElementById("loginUsername").value.trim();
+    const pass = document.getElementById("loginPass").value.trim();
+    const error = document.getElementById("loginError");
+
+    error.innerHTML="";
+
+    const res = await fetch(USER_API);
+    const users = await res.json();
+
+    const foundUser = users.find(u =>
+        u.username === username && u.pass === pass
+    );
+
+    if(!foundUser){
+        error.innerHTML="Invalid Credentials!";
+        return;
+    }
+
+ 
+    if(foundUser.status === "inactive"){
+        error.innerHTML="Your account is deactivated by admin.";
+        return;
+    }
+
+    localStorage.setItem("currentUser", JSON.stringify(foundUser));
+
+    if(foundUser.role==="admin"){
+        window.location.href="dashboard.html";
+    }else{
+        window.location.href="index.html";
+    }
+}
+
+</script>
+
+
+</body>
+</html>
